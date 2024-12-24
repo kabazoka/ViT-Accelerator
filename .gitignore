@@ -1,0 +1,4 @@
+/host/__pycache__/
+/hls_source/hls_attention/
+*log
+*pth
