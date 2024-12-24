@@ -3,6 +3,7 @@ Vision Transformer Accelerator implemented in Vivado HLS for Xilinx FPGAs.
 
 ## Requirements
 - python=3.11
+  - Library dependencies are listed in host/requirements.txt
 - Xilinx Vitis Toolkit=2022.1
 
 ## Usage
