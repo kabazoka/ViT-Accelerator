@@ -8,6 +8,7 @@ Vision Transformer Accelerator implemented in Vivado HLS for Xilinx FPGAs.
 
 ## Usage
 ```bash
+pip install -r host/requirements.txt
 python host/custom.py
 python host/verify.py
 python host/forward.py
