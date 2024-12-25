@@ -17,4 +17,4 @@ vitis_hls -f scripts/run_hls.tcl
 ```
 
 ## Declaration
-The Python host code was originally authored by https://github.com/jankrepl and was subsequently copied from his repository: https://github.com/jankrepl/mildlyoverfitted/tree/master/github_adventures/vision_transformer. All credit for this code is due to the original author.
+The C++ host code was originally authored by https://github.com/staghado and was subsequently copied from his repository: https://github.com/staghado/vit.cpp. All credit for this code is due to the original author.

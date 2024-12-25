@@ -2,3 +2,26 @@
 /hls_source/hls_attention/
 *log
 *pth
+build/
+out/
+tmp/
+
+compile_commands.json
+CMakeSettings.json
+.vs/
+.vscode/
+.clangd
+
+.exrc
+.cache
+.DS_Store
+
+*.dot
+*.sw?
+
+__pycache__/
+
+# Model files
+*.pth
+*.bin
+*.gguf
