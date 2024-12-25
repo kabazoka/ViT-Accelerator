@@ -10,10 +10,10 @@ using namespace std;
 #define B_ROW 64
 #define B_COL 197
 
-void reference_mmult(int* a, int* b, int* c, int a_row, int a_col, int b_col) {
+void reference_mmult(float* a, float* b, float* c, int a_row, int a_col, int b_col) {
     for (int i = 0; i < a_row; i++) {
         for (int j = 0; j < b_col; j++) {
-            int sum = 0;
+            float sum = 0.0f;
             for (int k = 0; k < a_col; k++) {
                 sum += a[i * a_col + k] * b[k * b_col + j];
             }
@@ -22,7 +22,7 @@ void reference_mmult(int* a, int* b, int* c, int a_row, int a_col, int b_col) {
     }
 }
 
-void print_matrix(int* matrix, size_t rows, size_t cols, const char* name) {
+void print_matrix(float* matrix, size_t rows, size_t cols, const char* name) {
     std::cout << "Matrix " << name << ":\n";
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -33,20 +33,20 @@ void print_matrix(int* matrix, size_t rows, size_t cols, const char* name) {
     std::cout << "\n";
 }
 
-void mmult(volatile int* a, volatile int* b, volatile int* c, int a_row, int a_col, int b_row, int b_col);
+void mmult(volatile float* a, volatile float* b, volatile float* c);
 
 int main(int argc, char *argv[]) {
-	int a[A_ROW * A_COL];
-	int b[B_ROW * B_COL];
-	int c[A_ROW * B_COL];
-	int c_ref[A_ROW * B_COL];
+	float a[A_ROW * A_COL];
+	float b[B_ROW * B_COL];
+	float c[A_ROW * B_COL];
+	float c_ref[A_ROW * B_COL];
 
     // Initialize matrices with random data
     for (int i = 0; i < A_ROW * A_COL; i++) {
-        a[i] = std::rand() % 10;
+        a[i] = static_cast<float>(std::rand()) / RAND_MAX * 10.0f;
     }
     for (int i = 0; i < B_ROW * B_COL; i++) {
-        b[i] = std::rand() % 10;
+        b[i] = static_cast<float>(std::rand()) / RAND_MAX * 10.0f;
     }
 
     // Print the initialized matrices
@@ -57,17 +57,14 @@ int main(int argc, char *argv[]) {
     reference_mmult(a, b, c_ref, A_ROW, A_COL, B_COL);
 
     // Run the HLS kernel
-    mmult(a, b, c, A_ROW, A_COL, B_ROW, B_COL);
+    mmult(a, b, c);
 
     // Compare results
     bool pass = true;
     for (int i = 0; i < A_ROW * B_COL; i++) {
-        if (c[i] != c_ref[i]) {
+        if (std::abs(c[i] - c_ref[i]) > 1e-5) { // Tolerance for floating-point comparison
             pass = false;
             std::cout << "Mismatch at index " << i << ": HW=" << c[i] << ", Ref=" << c_ref[i] << "\n";
-        }
-        else{
-            std::cout << "Correct at index " << i << ": HW=" << c[i] << ", Ref=" << c_ref[i] << "\n";
         }
     }
 
