@@ -1,6 +1,5 @@
 // add simple qunatization strategies
 // adapted from : ggml/gpt-2
-
 #include "ggml/ggml.h"
 #include "ggml/ggml-alloc.h"
 

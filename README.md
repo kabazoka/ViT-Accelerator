@@ -8,12 +8,20 @@ Vision Transformer Accelerator implemented in Vivado HLS for Xilinx FPGAs.
 
 ## Usage
 ```bash
+# Installing Python dependencies
 pip install -r host/requirements.txt
-python host/custom.py
-python host/verify.py
-python host/forward.py
-cd hls_source
+
+# csim, csynth, and co-sim via vitis_hls
+cd hls_source/
 vitis_hls -f scripts/run_hls.tcl
+
+# Building host code
+cd host/
+mkdir build && cd build
+cmake ..
+cmake --build . --config Release
+./bin/vit -t 4 -m ../ggml-model-f16.gguf -i ../cat-resized.jpg
+
 ```
 
 ## Declaration

@@ -1,8 +1,9 @@
 #pragma once
-
-#include "ggml/ggml.h"
-#include "ggml/ggml-alloc.h"
-#include "ggml/examples/stb_image.h"
+#include "../host/ggml/include/ggml/ggml.h"
+#include "../host/ggml/include/ggml/ggml-alloc.h"
+#include "../host/ggml/examples/stb_image.h"
+#include <experimental/xrt_kernel.h>
+#include <ert.h>
 
 #include <cassert>
 #include <cmath>
@@ -73,6 +74,10 @@ struct vit_state
 {
     struct ggml_tensor *prediction;
     struct ggml_context *ctx;
+
+    // add XRT kernel handle
+    xrt::kernel krnl_attention;
+
     std::vector<uint8_t> work_buffer;
     std::vector<uint8_t> buf_alloc_img_enc;
     std::vector<uint8_t> buf_compute_img_enc;
