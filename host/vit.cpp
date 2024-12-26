@@ -1,3 +1,4 @@
+// vit.cpp : Vision Transformer (ViT) implementation in C++ using ggml
 #define _CRT_SECURE_NO_DEPRECATE // Disables ridiculous "unsafe" warnigns on Windows
 
 #include "vit.h"

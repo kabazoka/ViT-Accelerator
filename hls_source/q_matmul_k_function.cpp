@@ -1,4 +1,5 @@
 #include <iostream>
+#include "kernel.h"
 
 // ---------------------- SIZES & DEFINES ----------------------
 // Original parameters from the problem
@@ -14,88 +15,18 @@
 // Size of each tile
 #define M 16
 
-// ------------------ TOP FUNCTION (KERNEL) --------------------
 extern "C" {
-void mmult(volatile float* a, // Read-Only Matrix A
-           volatile float* b, // Read-Only Matrix B
-           volatile float* c  // Output Result
-          )
-{
-#pragma HLS INTERFACE m_axi port=a offset=slave bundle=gmem0 depth=12608
-#pragma HLS INTERFACE m_axi port=b offset=slave bundle=gmem1 depth=12608
-#pragma HLS INTERFACE m_axi port=c offset=slave bundle=gmem2 depth=38809
+void mmult(float A[REAL_A_ROW][REAL_A_COL], float B[REAL_B_ROW][REAL_B_COL], float C[REAL_A_ROW][REAL_B_COL]){
 
-#pragma HLS INTERFACE s_axilite port=a bundle=control
-#pragma HLS INTERFACE s_axilite port=b bundle=control
-#pragma HLS INTERFACE s_axilite port=c bundle=control
-#pragma HLS INTERFACE s_axilite port=return bundle=control
-
-    // ------------------------------------------------------------
-    // 1) Declare three large static arrays (localA, localB, localC)
-    //    to store the entire input/output.
-    //    Use pragma to force them to be inferred as BRAM.
-    // ------------------------------------------------------------
-    static float localA[REAL_A_ROW][REAL_A_COL];
-#pragma HLS BIND_STORAGE variable=localA type=RAM_2P impl=BRAM latency=2
-    static float localB[REAL_B_ROW][REAL_B_COL];
-#pragma HLS BIND_STORAGE variable=localB type=RAM_2P impl=BRAM latency=2
-    static float localC[REAL_A_ROW][REAL_B_COL];
-#pragma HLS BIND_STORAGE variable=localC type=RAM_2P impl=BRAM latency=2
-
-    // ------------------------------------------------------------
-    // 2) Use a single burst read to load A and B from global memory
-    //    into localA and localB (197×64, 64×197).
-    // ------------------------------------------------------------
-    // Read Input A => localA
-readA:
-    for (int loc = 0, i = 0, j = 0; loc < (REAL_A_ROW * REAL_A_COL); loc++, j++) {
-#pragma HLS PIPELINE II=1
-        if (j == REAL_A_COL) {
-            i++;
-            j = 0;
-        }
-        localA[i][j] = a[loc];
-    }
-
-    // Read Input B => localB
-readB:
-    for (int loc = 0, i = 0, j = 0; loc < (REAL_B_ROW * REAL_B_COL); loc++, j++) {
-#pragma HLS PIPELINE II=1
-        if (j == REAL_B_COL) {
-            i++;
-            j = 0;
-        }
-        localB[i][j] = b[loc];
-    }
-
-    // ------------------------------------------------------------
-    // 3) Initialize localC (to prevent old data from interfering),
-    //    because the final result will be stored here.
-    // ------------------------------------------------------------
-initC:
-    for (int i = 0; i < REAL_A_ROW; i++) {
-        for (int j = 0; j < REAL_B_COL; j++) {
-#pragma HLS PIPELINE II=1
-            localC[i][j] = 0.0f;
-        }
-    }
-
-    // ------------------------------------------------------------
-    // The following starts the Systolic Array computation (tile-based):
-    //  - Since we've already read the entire A and B into localA, localB,
-    //    we only need to access localA, localB during the computation.
-    //  - Finally, write the calculated localC back to global memory.
-    // ------------------------------------------------------------
-
-    // Use subA, subB as temporary buffers for each tile from localA, localB
+    // Use subA, subB as temporary buffers for each tile from A, B
     float subA[M][REAL_A_COL];
 #pragma HLS ARRAY_PARTITION variable=subA dim=2 complete
 
     float subB[REAL_B_ROW][M];
 #pragma HLS ARRAY_PARTITION variable=subB dim=1 complete
 
-    // Use inC to replace the previous localC for storing
-    // intermediate results for a 16×16 tile
+    // Use inC to replace the previous C for storing
+    // intermediate results for a 16*16 tile
     float inC[M][M];
 #pragma HLS ARRAY_PARTITION variable=inC dim=0 complete
 
@@ -127,7 +58,7 @@ tile_outer_loop:
                     int globalRow = tileRow * M + i;  // 0..207
                     // real col = j
                     if (globalRow < REAL_A_ROW) {  // <197
-                        subA[i][j] = localA[globalRow][j];
+                        subA[i][j] = A[globalRow][j];
                     } else {
                         subA[i][j] = 0.0f;
                     }
@@ -141,7 +72,7 @@ tile_outer_loop:
                     int globalCol = tileCol * M + j; // 0..207
                     // real row = i
                     if (globalCol < REAL_B_COL) {   // <197
-                        subB[i][j] = localB[i][globalCol];
+                        subB[i][j] = B[i][globalCol];
                     } else {
                         subB[i][j] = 0.0f;
                     }
@@ -150,8 +81,8 @@ tile_outer_loop:
 
             //------------------------------------------------------
             // (c) Internal Systolic Array computation:
-            //     subA is 16×64, subB is 64×16
-            //     The result goes into inC (16×16).
+            //     subA is 16*64, subB is 64*16
+            //     The result goes into inC (16*16).
             //------------------------------------------------------
         systolic_tiling:
             // inA, inB are additional scratch registers inside the PE array
@@ -169,7 +100,7 @@ tile_outer_loop:
                 }
             }
 
-            // Total shift steps = 64 + 2*16 - 2 = 64 + 30 = 94
+            // Total shift steps = 64 + 2 * 16 - 2 = 64 + 30 = 94
             for (int r = 0; r < (REAL_A_COL + 2 * M - 2); r++) {
 #pragma HLS PIPELINE
                 // 1) Shift inA to the right
@@ -215,11 +146,10 @@ tile_outer_loop:
 
             //------------------------------------------------------
             // (d) Write the tile's computed result (inC) back to
-            //     the corresponding location in localC,
+            //     the corresponding location in C,
             //     only if it's within the valid 197×197 range.
             //------------------------------------------------------
         store_tileC:
-#pragma HLS DEPENDENCE variable=localC inter false
             for (int i = 0; i < M; i++) {
 #pragma HLS PIPELINE II=1
                 for (int j = 0; j < M; j++) {
@@ -228,7 +158,7 @@ tile_outer_loop:
                     // Only write back if within the valid region of 197×197
                     if ((globalRow < REAL_A_ROW) && (globalCol < REAL_B_COL)) {
                         // Use += as in the original code
-                        localC[globalRow][globalCol] += inC[i][j];
+                        C[globalRow][globalCol] += inC[i][j];
                     }
                 }
             }
@@ -240,14 +170,6 @@ tile_outer_loop:
     // 4) After computation finishes, write localC back to global
     //    memory c with a single burst write (197×197).
     // ------------------------------------------------------------
-writeC:
-    for (int loc = 0, i = 0, j = 0; loc < (REAL_A_ROW * REAL_B_COL); loc++, j++) {
-#pragma HLS PIPELINE II=1
-        if (j == REAL_B_COL) {
-            i++;
-            j = 0;
-        }
-        c[loc] = localC[i][j];
-    }
+
 }
 } // extern "C"

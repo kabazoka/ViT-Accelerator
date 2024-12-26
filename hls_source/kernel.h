@@ -1,15 +1,17 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
-#define D_HEAD 64         // Dimension of each head
-#define NUM_TOKENS 128    // Number of tokens (sequence length)
+#define REAL_Q_ROW 197
+#define REAL_Q_COL 64
+#define REAL_K_ROW 64
+#define REAL_K_COL 197
 
-// Function prototype for the HLS kernel
 extern "C" {
-void attention_kernel(float Q[NUM_TOKENS][D_HEAD],
-                      float K[NUM_TOKENS][D_HEAD],
-                      float V[NUM_TOKENS][D_HEAD],
-                      float Output[NUM_TOKENS][D_HEAD]);
+void mmult(float A[REAL_Q_ROW][REAL_Q_COL], float B[REAL_K_ROW][REAL_K_COL], float C[REAL_Q_ROW][REAL_K_COL]);
+}
+
+extern "C" {
+void attention_kernel(volatile float* q, volatile float* k, volatile float* attention_score);
 }
 
 #endif // KERNEL_H

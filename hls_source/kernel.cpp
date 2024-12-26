@@ -1,9 +1,12 @@
-#include <hls_math.h>
-// #define D_HEAD 64
-// #define NUM_TOKENS 128
-// Changed small values for testing
-#define D_HEAD 16
-#define NUM_TOKENS 32
+// kernel.cpp
+#include <iostream>
+#include "kernel.h"
+
+#define SCAILING_FACTOR 8
+#define REAL_Q_ROW 197
+#define REAL_Q_COL 64
+#define REAL_K_ROW 64
+#define REAL_K_COL 197
 
 float exp_approx(float x) {
     float result = 1 + x + (x * x) / 2 + (x * x * x) / 6;
@@ -11,57 +14,102 @@ float exp_approx(float x) {
 }
 
 extern "C" {
-void attention_kernel(float Q[NUM_TOKENS][D_HEAD],
-                      float K[NUM_TOKENS][D_HEAD],
-                      float V[NUM_TOKENS][D_HEAD],
-                      float Output[NUM_TOKENS][D_HEAD]) {
-#pragma HLS INTERFACE m_axi port=Q offset=slave bundle=gmem
-#pragma HLS INTERFACE m_axi port=K offset=slave bundle=gmem
-#pragma HLS INTERFACE m_axi port=V offset=slave bundle=gmem
-#pragma HLS INTERFACE m_axi port=Output offset=slave bundle=gmem
-#pragma HLS ARRAY_PARTITION variable=Q cyclic factor=4 dim=2
-#pragma HLS ARRAY_PARTITION variable=K cyclic factor=4 dim=2
-#pragma HLS ARRAY_PARTITION variable=V cyclic factor=4 dim=2
-#pragma HLS INTERFACE s_axilite port=Output bundle=control
+void mmult(float A[REAL_Q_ROW][REAL_Q_COL], float B[REAL_K_ROW][REAL_K_COL], float C[REAL_Q_ROW][REAL_K_COL]);
+}
+
+extern "C" {
+void attention_kernel(volatile float* q, // Read-Only Matrix Q
+                      volatile float* k, // Read-Only Matrix K
+                      volatile float* attention_score  // Output Result
+                     ) {
+
+#pragma HLS INTERFACE m_axi port=q offset=slave bundle=gmem0 depth=12608
+#pragma HLS INTERFACE m_axi port=k offset=slave bundle=gmem1 depth=12608
+#pragma HLS INTERFACE m_axi port=attention_score offset=slave bundle=gmem2 depth=38809
+
+#pragma HLS INTERFACE s_axilite port=q bundle=control
+#pragma HLS INTERFACE s_axilite port=k bundle=control
+#pragma HLS INTERFACE s_axilite port=attention_score bundle=control
 #pragma HLS INTERFACE s_axilite port=return bundle=control
 
-    float scores[NUM_TOKENS][NUM_TOKENS];
-    float softmax_scores[NUM_TOKENS][NUM_TOKENS];
-    
-    // Compute scaled dot product (Query-Key)
-    for (int i = 0; i < NUM_TOKENS; i++) {
-        #pragma HLS PIPELINE II=1
-        for (int j = 0; j < NUM_TOKENS; j++) {
-            float dot_product = 0;
-            for (int k = 0; k < D_HEAD; k++) {
-                #pragma HLS UNROLL factor=4
-                dot_product += Q[i][k] * K[j][k];
-            }
-            scores[i][j] = dot_product / hls::sqrt((float)D_HEAD);
+    static float localQ[REAL_Q_ROW][REAL_Q_COL];
+#pragma HLS BIND_STORAGE variable=localQ type=RAM_2P impl=BRAM latency=2
+    static float localK[REAL_K_ROW][REAL_K_COL];
+#pragma HLS BIND_STORAGE variable=localK type=RAM_2P impl=BRAM latency=2
+    static float localAttention[REAL_Q_ROW][REAL_K_COL];
+#pragma HLS BIND_STORAGE variable=localAttention type=RAM_2P impl=BRAM latency=2
+
+    static float scores[REAL_Q_ROW][REAL_K_COL];
+    static float softmax_scores[REAL_Q_ROW][REAL_K_COL];
+
+    // Read Input q => localQ
+readQ:
+    for (int loc = 0, i = 0, j = 0; loc < (REAL_Q_ROW * REAL_Q_COL); loc++, j++) {
+#pragma HLS PIPELINE II=1
+        if (j == REAL_Q_COL) {
+            i++;
+            j = 0;
+        }
+        localQ[i][j] = q[loc];
+    }
+
+    // Read Input k => localK
+readK:
+    for (int loc = 0, i = 0, j = 0; loc < (REAL_K_ROW * REAL_K_COL); loc++, j++) {
+#pragma HLS PIPELINE II=1
+        if (j == REAL_K_COL) {
+            i++;
+            j = 0;
+        }
+        localK[i][j] = k[loc];
+    }
+    // Initialize localAttention
+init_scores:
+    for (int i = 0; i < REAL_Q_ROW; i++) {
+        for (int j = 0; j < REAL_K_COL; j++) {
+#pragma HLS PIPELINE II=1
+            scores[i][j] = 0.0f;
+        }
+    }
+    // query matmul  key
+    mmult(localQ, localK, scores);
+
+    // Scaling query & key dot-product
+scailing:
+    for (int i = 0; i < REAL_Q_ROW; i++) {
+        for (int j = 0; j < REAL_K_COL; j++){
+#pragma HLS PIPELINE II=1
+            scores[i][j] = scores[i][j] / (float)SCAILING_FACTOR ;
         }
     }
 
     // Compute softmax (approximated for simplicity)
-    for (int i = 0; i < NUM_TOKENS; i++) {
-        float sum = 0;
-        for (int j = 0; j < NUM_TOKENS; j++) {
-            scores[i][j] = exp_approx(scores[i][j]);
-            sum += scores[i][j];
+softmax:
+    for (int i = 0; i < REAL_Q_ROW; i++) {
+        float sum[8] = {0};
+        for (int j = 0; j < REAL_K_COL; j++) {
+#pragma HLS PIPELINE II=1
+            sum[j % 8] += exp_approx(scores[i][j]);
         }
-        for (int j = 0; j < NUM_TOKENS; j++) {
-            softmax_scores[i][j] = scores[i][j] / sum;
+        for (int j = 1; j < 8; j++) {
+#pragma HLS PIPELINE II=7
+            sum[0] += sum[j];
         }
+        for (int j = 0; j < REAL_K_COL; j++) {
+#pragma HLS PIPELINE II=1
+			softmax_scores[i][j] = scores[i][j] / sum[0];
+		}
+	}
+
+writeAttention:
+    for (int loc = 0, i = 0, j = 0; loc < (REAL_Q_ROW * REAL_K_COL); loc++, j++) {
+#pragma HLS PIPELINE II=1
+        if (j == REAL_K_COL) {
+            i++;
+            j = 0;
+        }
+        attention_score[loc] = softmax_scores[i][j];
     }
 
-    // Attention-Value Dot Product
-    for (int i = 0; i < NUM_TOKENS; i++) {
-        for (int j = 0; j < D_HEAD; j++) {
-            float result = 0;
-            for (int k = 0; k < NUM_TOKENS; k++) {
-                result += softmax_scores[i][k] * V[k][j];
-            }
-            Output[i][j] = result;
-        }
-    }
 }
 }

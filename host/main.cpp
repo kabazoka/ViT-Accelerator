@@ -1,3 +1,4 @@
+// main.cpp
 #define _CRT_SECURE_NO_DEPRECATE // disables "unsafe" warnings on Windows
 
 #include "vit.h"
