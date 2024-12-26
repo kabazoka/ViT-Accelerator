@@ -18,7 +18,12 @@ vitis_hls -f scripts/run_hls.tcl
 # Building host code
 cd host/
 mkdir build && cd build
-cmake ..
+
+# (OPTIONS) IF NOT USING FPGA:
+cmake .. -DUSE_FPGA=OFF
+# IF USING FPGA:
+cmake .. -DUSE_FPGA=ON
+
 cmake --build . --config Release
 ./bin/vit -t 4 -m ../ggml-model-f16.gguf -i ../cat-resized.jpg
 
