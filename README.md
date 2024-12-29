@@ -72,6 +72,8 @@ A **Vision Transformer** (ViT) applies the **Transformer** architecture—origin
 
 While powerful, **attention** can be computationally heavy (\(\mathbf{Q}\times \mathbf{K}^T\) is a large matrix multiplication), motivating hardware acceleration.
 
+![Vision Transformer](image/ViT.gif)
+
 ---
 
 ## 2. HLS Attention Kernel
