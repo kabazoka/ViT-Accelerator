@@ -203,7 +203,7 @@ Overall, this project taught me how Transformers’ attention can be mapped to a
 > For using `hls::exp()`, the **INTERNAL-INFO: never saw llvm instructions 'fexp'(507)** message will be displayed in the c synthesis step but will not affect the results.
   
 - The first step of the softmax function is to calculate the exponents of the input elements and accumulate them together, but during the accumulation operation, an II violation occurs between "load" and "store", so I increase the distance to make II=1.
-  ```cpp=
+  ```cpp
   for (int j = 0; j < REAL_K_COL; j++) {
       sum[j % 8] += exp_approx(scores[i][j]);
   }
