@@ -189,8 +189,6 @@ I combined:
 - Since the current Systolic Array can only handle fixed-size matrix computations, future improvements will focus on modifying it to support matrix computations of arbitrary sizes.
 - In the current design for Memory Access, data is first fetched from Global Memory via the AXI4 Master Protocol and stored in the Local Buffer before being loaded into the Sub Buffer for computation by the Systolic Array HLS Kernel. In the future, the Sub Buffer will be directly connected to the AXI4 Master Protocol to retrieve data, reducing the access time for storing data from Global Memory to the Local Buffer in the overall architecture.
 
-Overall, this project taught me how Transformers’ attention can be mapped to a **systolic array** approach in HLS, how **XRT** can manage device buffers, and how to unify these steps into a working flow for FPGA acceleration.
-
 ## 8. Hua-Shao Chu's Study Journal
 
 ### 8.1 What I Did
@@ -217,3 +215,5 @@ Overall, this project taught me how Transformers’ attention can be mapped to a
 Although implementing the softmax function is not very difficult, optimizing it requires many factors to be considered.
 - **Resource Usage:** Since both inputs and outputs are huge matrices, using just one instance will take many times to complete, so there is a trade-off between latency and area.
 - **Pipeline strategy:** In order to improve hardware utilization and do not want to leave the hardware idle, the pipeline design must be optimized. Since there are many sub-loops inside the function, it is impossible to directly use the "pipeline rewind" pragma, so you need to try to use different algorithms to achieve it.
+
+Overall, this project taught me how Transformers’ attention can be mapped to a **systolic array** approach in HLS, how **XRT** can manage device buffers, and how to unify these steps into a working flow for FPGA acceleration.
