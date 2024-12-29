@@ -1,5 +1,7 @@
 # ViT-Accelerator
+
 This repository demonstrates how to **accelerate a Vision Transformer (ViT)** on an FPGA using **High-Level Synthesis (HLS)** and **Xilinx’s XRT** runtime. It showcases:
+
 1. A **systolic-array–style** matrix multiplication (in HLS) for computing parts of the attention mechanism.
 2. A **softmax** approximation kernel to complete the attention scoring.
 3. A **host (CPU) code** that manages data transfers and kernel invocation via XRT.
@@ -7,11 +9,13 @@ This repository demonstrates how to **accelerate a Vision Transformer (ViT)** on
 Below is an overview of each major component, a brief introduction to the ViT concept, and a final study journal describing the learning process from a student’s perspective.
 
 ## Requirements
+
 - python=3.11
   - Library dependencies are listed in host/requirements.txt
 - Xilinx Vitis Toolkit=2022.1
 
 ## Usage
+
 ```bash
 # Installing Python dependencies
 pip install -r host/requirements.txt
@@ -55,6 +59,7 @@ cmake --build . --config Release
 ```
 
 ## Declaration
+
 The C++ host code was originally authored by https://github.com/staghado and was subsequently copied from his repository: https://github.com/staghado/vit.cpp. All credit for this code is due to the original author.
 
 ---
@@ -130,7 +135,9 @@ The **host** program (CPU side) is responsible for:
 > **Project**: Accelerating Vision Transformer Attention with FPGA
 
 ### 6.1 What I Did
+
 I combined:
+
 - **HLS kernels** (`attention_kernel`, `mmult`) in C/C++.  
 - A **host program** using XRT to load the `.xclbin` and manage data buffers.  
 - **ViT** basics: focusing on the attention step, which multiplies query (\(\mathbf{Q}\)) and key (\(\mathbf{K}\)) matrices, then applies scaling and softmax.
