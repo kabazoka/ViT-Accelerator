@@ -167,4 +167,17 @@ I combined:
 - Handling edge cases with zero-padding or partial tiles was tricky.  
 - In the future, it might be interesting to integrate the entire ViT forward pass on the FPGA, or replicate multiple attention kernels for multi-head parallelism.
 
+## 7. Sheng-Wei Huang's Study Journal
+
+### 7.1 What I Did
+
+- Design an Systolic Array HLS Kernel (mmult) for matrix multiplication between the query and key matrices in Self-Attention.
+- In the Vision Transformer, where the input matrix has dimensions of (224, 224, 3), the query and key matrices in Self-Attention have dimensions of (197, 64, 12) and (64, 197, 12), respectively.The last dimension of the query and key matrices represents the number of heads in Multi-Head Self-Attention, meaning 12 heads are processed independently.For this Final Project, the Systolic Array HLS Kernel is specifically designed for the matrix multiplication of one head, handling matrix dimensions of 197 × 64 and 64 × 197.
+- By connecting Local Buffer and the AXI4 Master Protocol, the design allows data to be fetched from the FPGA's Global Memory and provided for computation by the Systolic Array HLS Kernel.
+
+### 7.2 Challenges & Future Steps
+
+- Since the current Systolic Array can only handle fixed-size matrix computations, future improvements will focus on modifying it to support matrix computations of arbitrary sizes.
+- In the current design for Memory Access, data is first fetched from Global Memory via the AXI4 Master Protocol and stored in the Local Buffer before being loaded into the Sub Buffer for computation by the Systolic Array HLS Kernel. In the future, the Sub Buffer will be directly connected to the AXI4 Master Protocol to retrieve data, reducing the access time for storing data from Global Memory to the Local Buffer in the overall architecture.
+
 Overall, this project taught me how Transformers’ attention can be mapped to a **systolic array** approach in HLS, how **XRT** can manage device buffers, and how to unify these steps into a working flow for FPGA acceleration.
