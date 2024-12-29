@@ -196,11 +196,11 @@ Overall, this project taught me how Transformers’ attention can be mapped to a
 ### 8.1 What I Did
 
 - I focus on optimizing the **softmax function**. Since the softmax function requires an exponential function, either use an approximation or use the built-in function `hls::exp()`.
-  > [!NOTE]
-  > While using `hls::exp()`, you'll need to `#include <hls_math.h>`.
-  
-  > [!WARNING]
-  > For using `hls::exp()`, the **INTERNAL-INFO: never saw llvm instructions 'fexp'(507)** message will be displayed in the c synthesis step but will not affect the results.
+> [!NOTE]
+> While using `hls::exp()`, you'll need to `#include <hls_math.h>`.
+
+> [!WARNING]
+> For using `hls::exp()`, the **INTERNAL-INFO: never saw llvm instructions 'fexp'(507)** message will be displayed in the c synthesis step but will not affect the results.
   
 - The first step of the softmax function is to calculate the exponents of the input elements and accumulate them together, but during the accumulation operation, an II violation occurs between "load" and "store", so I increase the distance to make II=1.
   ```cpp=
