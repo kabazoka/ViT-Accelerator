@@ -123,11 +123,10 @@ The **host** program (CPU side) is responsible for:
 
 ---
 
-## 6. Study Journal
+## 6. Hao Chen's Study Journal
 
 > **Project**: Accelerating Vision Transformer Attention with FPGA
 
-### Hao Chen:
 ### 6.1 What I Did
 I combined:
 - **HLS kernels** (`attention_kernel`, `mmult`) in C/C++.  
